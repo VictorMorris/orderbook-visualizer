@@ -2,6 +2,7 @@
 
 import { OrderBook } from './orderbook';
 import type { Order, Trade } from './types';
+import { cumulative } from '../render/depth';
 
 
 let passed = 0;
@@ -30,6 +31,14 @@ function eqLevels(actual: { price: number; size: number }[],
 
 const ord = (id: string, side: Order['side'], price: number, size: number): Order =>
     ({ id, side, price, size });
+
+const pointKey = (p: { price: number; cum: number }) => `${p.price}|${p.cum}`;
+function eqPoints(actual: { price: number; cum: number }[],
+                  expected: { price: number; cum: number }[]): [boolean, string] {
+    const a = actual.map(pointKey), e = expected.map(pointKey);
+    return [a.length === e.length && a.every((x, i) => x === e[i]),
+            `got [${a.join(', ')}] want [${e.join(', ')}]`];
+}
 
 // 1. Resting orders, no cross
 {
@@ -153,6 +162,24 @@ const ord = (id: string, side: Order['side'], price: number, size: number): Orde
     b.submit(ord('a1', 'ask', 100, 3));
     b.cancel('nope');
     check('no throw, level intact', b.bestAsk() === 100);
+}
+
+// 11. cumulative() running-sum transform (depth chart)
+{
+    console.log('cumulative depth transform');
+    const asks = [{ price: 100.5, size: 12 }, { price: 101, size: 8 }, { price: 101.5, size: 20 }];
+    const [ok, why] = eqPoints(cumulative(asks), [
+        { price: 100.5, cum: 12 },
+        { price: 101, cum: 20 },
+        { price: 101.5, cum: 40 },
+    ]);
+    check('running totals 12, 20, 40 with prices preserved', ok, why);
+    check('cum is monotonically non-decreasing', cumulative(asks).every((p, i, a) => i === 0 || p.cum >= a[i - 1].cum));
+
+    const [okOne, whyOne] = eqPoints(cumulative([{ price: 100, size: 5 }]), [{ price: 100, cum: 5 }]);
+    check('single level → one point at its own size', okOne, whyOne);
+
+    check('empty input → empty output', cumulative([]).length === 0);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

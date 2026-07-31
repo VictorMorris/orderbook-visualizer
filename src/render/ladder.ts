@@ -11,7 +11,7 @@ export function drawLadder(bids: Level[], asks: Level[]): Container {
     let maxSize = 1;
     for(const book of [bids, asks]) {
         for(const level of book) {
-            if(level.size > maxSize) maxSize = level.size;
+            maxSize = Math.max(level.size, maxSize);
         }
     }
 

@@ -2,6 +2,7 @@ import { app } from './render/app';
 import { OrderBook } from './engine/orderbook';
 import type { Order } from './engine/types';
 import { drawLadder } from './render/ladder';
+import { drawDepth } from './render/depthChart';
 
 
 const book = new OrderBook();
@@ -22,3 +23,7 @@ const seed: Order[] = [
 seed.forEach((o) => book.submit(o));
 
 app.stage.addChild(drawLadder(book.levels('bid'), book.levels('ask')));
+
+const depth = drawDepth(book.levels('bid'), book.levels('ask'));
+depth.y = 220;
+app.stage.addChild(depth);
