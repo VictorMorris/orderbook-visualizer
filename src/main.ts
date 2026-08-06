@@ -4,17 +4,21 @@ import { drawLadder } from './render/ladder';
 import { drawDepth } from './render/depthChart';
 import { startSynthetic } from './driver/synthetic';
 import { Container } from 'pixi.js';
+import { startBinanceFeed } from './feed/binance';
+import { DepthBook } from './feed/depthBook';
 
-const book = new OrderBook();
-const stop = startSynthetic(book, { mid: 100, hz: 30, levels: 6, tick: 0.5 });
+const orderBook = new OrderBook();
+const depthBook = new DepthBook();
+const stop = startSynthetic(orderBook, { mid: 100, hz: 30, levels: 6, tick: 0.5 });
+const diff = startBinanceFeed(depthBook, {symbol:"btcusdt"})
 
 const ladder = app.stage.addChild(new Container());
 const depth  = app.stage.addChild(new Container());
 depth.y = 220;
 
 app.ticker.add(() => {
-    const bids = book.levels("bid");
-    const asks = book.levels("ask");
+    const bids = orderBook.levels("bid");
+    const asks = orderBook.levels("ask");
     
     ladder.removeChildren();
     depth.removeChildren();
