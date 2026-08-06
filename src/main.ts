@@ -10,21 +10,22 @@ import { DepthBook } from './feed/depthBook';
 const orderBook = new OrderBook();
 const depthBook = new DepthBook();
 const stop = startSynthetic(orderBook, { mid: 100, hz: 30, levels: 6, tick: 0.5 });
-const diff = startBinanceFeed(depthBook, {symbol:"btcusdt"})
+const stopFeed = startBinanceFeed(depthBook, {symbol:"btcusdt"})
 
 const ladder = app.stage.addChild(new Container());
 const depth  = app.stage.addChild(new Container());
 depth.y = 220;
 
 app.ticker.add(() => {
-    const bids = orderBook.levels("bid");
-    const asks = orderBook.levels("ask");
+    const N = 15;
+    const bids = depthBook.levels("bid").slice(0, N);
+    const asks = depthBook.levels("ask").slice(0,N);
     
-    ladder.removeChildren();
-    depth.removeChildren();
+    ladder.removeChildren().forEach(c => c.destroy({ children: true }));
+    depth.removeChildren().forEach(c => c.destroy({ children: true }));
 
     ladder.addChild(drawLadder(bids, asks));
     depth.addChild(drawDepth(bids, asks));
 });
 
-import.meta.hot?.dispose(() => stop());
+import.meta.hot?.dispose(() => { stop(); stopFeed(); });
