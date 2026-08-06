@@ -1,6 +1,6 @@
-import type { Order, Side, Trade } from './types';
+import type { BookView, Order, Side, Trade } from './types';
 
-export class OrderBook {
+export class OrderBook implements BookView {
     // price : FIFO queue of resting orders
     private bids = new Map<number, Order[]>(); 
     private asks = new Map<number, Order[]>();
