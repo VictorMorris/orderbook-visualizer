@@ -11,6 +11,15 @@ export interface DepthSnapshot {
   asks: PriceLevel[];
 }
 
+// One @aggTrade event off the WebSocket.
+export interface AggTrade {
+  a: number;   // aggregate trade id
+  p: string;   // price
+  q: string;   // quantity
+  T: number;   // trade time, ms epoch
+  m: boolean;  // true = buyer was the maker, i.e. a SELL took the bid
+}
+
 // One @depth diff event off the WebSocket.
 export interface DepthDiff {
   U: number;        // first update id covered by this event
