@@ -87,7 +87,7 @@ export class HeatmapBuffer {
 
 
   columns(): Column[] {
-    return this.history.slice(0, 25);
+    return this.history;
   }
 
   window(): PriceWindow {
@@ -111,10 +111,18 @@ export class HeatmapBuffer {
 }
 
 
-export function startHeatmapSampler(buffer: HeatmapBuffer, book: BookView, hz = 4): () => void {
+// onColumn fires after each sample so the renderer redraws at sampler rate,
+// not at ticker rate.
+export function startHeatmapSampler(
+  buffer: HeatmapBuffer,
+  book: BookView,
+  hz = 4,
+  onColumn?: () => void,
+): () => void {
   const timer = setInterval(() => {
     buffer.sample(book);
+    onColumn?.();
   }, 1000/hz);
-  
+
   return () => {clearInterval(timer)}
 }
