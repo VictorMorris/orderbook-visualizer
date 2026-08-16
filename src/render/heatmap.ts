@@ -11,7 +11,19 @@ export interface PriceWindow {
   rows: number;
 }
 
+function shiftRows(column: Column, delta: number): void {
+  if (delta > 0) {
+    column.copyWithin(delta, 0);
+    column.fill(0, 0, Math.min(delta, column.length));
+  } else {
+    column.copyWithin(0, -delta);
+    column.fill(0, Math.max(0, column.length + delta));
+  }
+}
+
 export class HeatmapBuffer {
+  private static readonly MARGIN = 0.25;
+
   private readonly rows: number;
   private readonly maxColumns: number;
   private readonly bucket: number;
@@ -59,7 +71,19 @@ export class HeatmapBuffer {
   }
 
 
-  private reanchor(mid: number): void {}
+
+  private reanchor(mid: number): void {
+    const span = this.bucket * this.rows;
+    const margin = span * HeatmapBuffer.MARGIN;
+    if (mid <= this.top - margin && mid >= this.top - span + margin) return;
+
+    const newTop = Math.round((mid + span / 2) / this.bucket) * this.bucket;
+    const delta = Math.round((newTop - this.top) / this.bucket);
+    if (delta === 0) return;
+
+    this.top = newTop;
+    for (const column of this.history) shiftRows(column, delta);
+  }
 
 
   columns(): Column[] {
