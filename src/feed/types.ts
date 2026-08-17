@@ -1,10 +1,10 @@
-// Raw wire shapes from Binance market-data streams. These stay in feed/ — the
-// engine never sees them.
-
-// A single [price, quantity] pair. Both are decimal strings on the wire.
+// Aggregate resting order size at price
+// Exchange sends decimal strings
 export type PriceLevel = [price: string, qty: string];
 
 // REST depth snapshot: GET /api/v3/depth?symbol=…&limit=1000
+// The top limit levels per side
+// Levels deeper than the snapshot are unknown
 export interface DepthSnapshot {
   lastUpdateId: number;
   bids: PriceLevel[];
@@ -17,13 +17,14 @@ export interface AggTrade {
   p: string;   // price
   q: string;   // quantity
   T: number;   // trade time, ms epoch
-  m: boolean;  // true = buyer was the maker, i.e. a SELL took the bid
+  m: boolean;  // m === true means buyer rested and seller was the aggresser
 }
 
 // One @depth diff event off the WebSocket.
+// What changed in the order book since the last event
 export interface DepthDiff {
   U: number;        // first update id covered by this event
   u: number;        // final update id covered by this event
-  b: PriceLevel[];  // bid changes (absolute qty; "0" removes the level)
-  a: PriceLevel[];  // ask changes
+  b: PriceLevel[];  // bid changes (Absolute quantity)
+  a: PriceLevel[];  // ask changes (Absolute quantity)
 }

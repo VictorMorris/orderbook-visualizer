@@ -10,8 +10,8 @@ export interface Order {
 export interface Trade {
   price: number;
   size: number;
-  makerId: string;
-  takerId: string;
+  makerId: string; // The order that was already resting
+  takerId: string; // The order that crossed the spread
 }
 
 // Read-only view the renderer draws. OrderBook (matching) and DepthBook (live
@@ -19,5 +19,5 @@ export interface Trade {
 export interface BookView {
   bestBid(): number | undefined;
   bestAsk(): number | undefined;
-  levels(side: Side): { price: number; size: number }[];
+  levels(side: Side): { price: number; size: number }[]; // Sorted (bids descending, asks ascending)
 }
