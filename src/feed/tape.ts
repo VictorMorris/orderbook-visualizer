@@ -9,8 +9,8 @@ export interface TapeTrade {
   aggressor: 'buy' | 'sell';
 }
 
-// Fixed-capacity ring of the most recent trades. Newest first, so the renderer
-// can slice off the top N without reversing.
+// Fixed-capacity array of the most recent trades
+// Newest first, so the renderer can slice off the top N without reversing
 export class TradeTape {
   private capacity: number;
   private tape:Array<TapeTrade> = []
@@ -18,24 +18,26 @@ export class TradeTape {
     this.capacity = capacity;
   }
 
-  // Convert the wire event and push it on the front, evicting past capacity.
+  // Convert the wire event and push it on the front
+  // If this pushes size past capacity it deletes oldest entries
   push(trade: AggTrade): void {
       this.tape.unshift({
       id: trade.a,
       price: Number(trade.p),
       size: Number(trade.q),
       time: trade.T,
-      aggressor: trade.m === true ? 'sell' : 'buy'
+      aggressor: trade.m === true ? 'sell' : 'buy' // m means buyer was the maker
     });
     while(this.tape.length > this.capacity) this.tape.pop();
   }
 
-  // Newest-first view, at most n entries.
+  // returns newest n entries
   recent(n: number): TapeTrade[] {
       return this.tape.slice(0,n);
   }
 
-  // Largest size currently held — the renderer scales bars against it.
+  // Largest size currently held for the renderer to scale bars against it
+  // O(n) as it must scan every trade in the tape
   maxSize(): number {
     let max = 0;
     for(const trade of this.tape){
@@ -46,6 +48,7 @@ export class TradeTape {
 }
 
 
+// The trade feed doesnt need a snapshot, buffer, or sequence check
 export function startTradeFeed(tape: TradeTape, symbol: string): () => void {
   const socket = new WebSocket(`wss://data-stream.binance.vision/ws/${symbol}@aggTrade`);
   

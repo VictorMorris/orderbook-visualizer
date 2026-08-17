@@ -10,12 +10,16 @@ export interface FeedOpts {
 //   REST: https://data-api.binance.vision/api/v3/depth?symbol=<SYMBOL>&limit=1000
 
 export function startBinanceFeed(book: DepthBook, opts: FeedOpts): () => void {
+  // Buffering: Queuing new events while waiting for the full snapshot
+  // Live: New events get added straight to the depthBook
   let phase: 'buffering' | 'live' = 'buffering';
   const buffer: DepthDiff[] = [];
   let lastUpdateId = 0;                 // u of the most recently applied event
   let resyncTimer: ReturnType<typeof setTimeout> | undefined;
   let stopped = false;
 
+  // Socket must be opened before the snapshot is fetched
+  // Open, buffer, then snapshot or there is an unbridgable gap
   const socket = new WebSocket(`wss://data-stream.binance.vision/ws/${opts.symbol}@depth`);
 
   socket.addEventListener('message', (event) => {
@@ -24,8 +28,8 @@ export function startBinanceFeed(book: DepthBook, opts: FeedOpts): () => void {
       buffer.push(diff);
       return;
     }
-    if (diff.u <= lastUpdateId) return;              // stale duplicate — already applied
-    if (diff.U > lastUpdateId + 1) return resync();  // gap — we missed events, rebuild
+    if (diff.u <= lastUpdateId) return;              // stale duplicate, already applied
+    if (diff.U > lastUpdateId + 1) return resync();  // gap, we missed events, rebuild
     book.applyDiff(diff.b, diff.a);
     lastUpdateId = diff.u;
   });
@@ -41,12 +45,16 @@ export function startBinanceFeed(book: DepthBook, opts: FeedOpts): () => void {
     });
   }
 
+  // Adds missed buffered events to book
+  // Drops stale events, validates the overlap, resets the book to snapshot, then applies the rest
   function replay(snap: DepthSnapshot): void {
     if (stopped) return;
     while (buffer.length > 0 && buffer[0].u <= snap.lastUpdateId) buffer.shift();  // drop events already in snapshot
     const first = buffer[0];
+    // The first buffered event must be U <= lastUpdateId + 1 <= u
+    // Else events are missing between the snapshot and the buffer
     if (first && !(first.U <= snap.lastUpdateId + 1 && snap.lastUpdateId + 1 <= first.u)) {
-      resync();                                      // snapshot older than our buffer — fetch a newer one
+      resync();                                      // snapshot older than our buffer, fetch a newer one
       return;
     }
     book.reset(snap.bids, snap.asks);
@@ -59,14 +67,16 @@ export function startBinanceFeed(book: DepthBook, opts: FeedOpts): () => void {
     phase = 'live';
   }
 
+  // discards the buffer, return to buffering, and fetch new snapshot
   function resync(): void {
     phase = 'buffering';
     buffer.length = 0;
     sync();
   }
 
+  // Fixed 1s retry
   function scheduleResync(): void {
-    resyncTimer = setTimeout(resync, 1000);          // backoff so a failing snapshot doesn't spin
+    resyncTimer = setTimeout(resync, 1000);         
   }
 
   sync();
