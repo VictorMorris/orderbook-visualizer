@@ -1,4 +1,5 @@
 // Tests written by Claude
+// Run with npx tsx src/engine/scratch.ts
 
 import { OrderBook } from './orderbook';
 import type { Order, Trade } from './types';

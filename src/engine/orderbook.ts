@@ -6,17 +6,19 @@ export class OrderBook implements BookView {
     private asks = new Map<number, Order[]>();
 
     // Returns highest bid
+    // O(n) scan of every price key
     bestBid(): number | undefined {
         let highest: number | undefined = undefined;
-        for(const bid of this.bids) {
-            if(highest === undefined || bid[0] > highest) {
-                highest = bid[0];
+        for(const price of this.bids.keys()) {
+            if(highest === undefined || price > highest) {
+                highest = price;
             }
         }
         return highest;
     }
 
     // Returns lowest ask
+    // O(n) scan of every price key
     bestAsk(): number | undefined { 
         let lowest: number | undefined = undefined;
         for(const ask of this.asks) {
@@ -36,9 +38,13 @@ export class OrderBook implements BookView {
     }
 
     // Fulfill the order for as much as is available
+    // Trades exectute at makers price and the remainder rests
+    // Mutates the Order, decremented size as it is filled
     submit(order: Order): Trade[] {
         const trades: Trade[] = [];
         const book = order.side === "bid" ? this.asks : this.bids;
+        
+        // Bid crosses when its price is at or above ask
         const crosses = (makerPrice: number) =>
             order.side === "bid" ? order.price >= makerPrice : order.price <= makerPrice;
 
@@ -64,6 +70,7 @@ export class OrderBook implements BookView {
         return trades;
     }
     // find the order by id in its level's queue and remove it
+    // O(n) scan of both books
     cancel(id: string): void {
         for (const book of [this.bids, this.asks]) {
             for(const [price, queue] of book) {
@@ -77,7 +84,9 @@ export class OrderBook implements BookView {
             }
         }
     }
-    // sorted levels with total size
+    // Sorted levels with total size
+    // Asks are sorted in descending order
+    // Bids are sorted in ascending order
     levels(side: Side): { price: number; size: number }[] {
         const book = side === "ask" ? this.asks : this.bids;
         const levels: { price: number; size: number }[] = [];
