@@ -1,7 +1,7 @@
 import type { BookView } from '../engine/types';
 
-
-
+// Each column is one time sample
+// Index is price row, Value is total resting size
 export type Column = Float32Array;
 
 
@@ -11,6 +11,8 @@ export interface PriceWindow {
   rows: number;
 }
 
+// Positive delta shifts rows downs
+// Vacated rows are filled with 0
 function shiftRows(column: Column, delta: number): void {
   if (delta > 0) {
     column.copyWithin(delta, 0);
@@ -32,9 +34,9 @@ export class HeatmapBuffer {
 
   constructor(
     rows = 60,
-    maxColumns = 120,
+    maxColumns = 120, // 30 seconds of history at 4hz
     bucket = 1,
-    top = 100,
+    top = 100, // Placeholder, gets recentered on startup
   ) {
     this.rows = rows;
     this.maxColumns = maxColumns;
@@ -48,8 +50,10 @@ export class HeatmapBuffer {
     const bid = book.bestBid();
     if (ask === undefined || bid === undefined) return;
     
-    this.reanchor((ask + bid)/2)
+    this.reanchor((ask + bid)/2) // Reanchor chart to price mid point
     const column:Column = new Float32Array(this.rows)
+
+    // get every size at price
     for(const {price, size} of book.levels('ask')) {
       const row = this.rowOf(price);
       if(row>=0) column[row] += size;
@@ -59,11 +63,13 @@ export class HeatmapBuffer {
       if(row>=0) column[row] += size;
     }
 
+    // Add column to history and pop oldest one
     this.history.push(column);
     if(this.history.length > this.maxColumns) this.history.shift();
   }
 
 
+  // Returns the row of a price, grouping by bucket
   private rowOf(price: number): number {
     if(this.top >= price && price > this.top-(this.bucket*this.rows)){
       return Math.floor((this.top-price)/this.bucket);
@@ -72,6 +78,8 @@ export class HeatmapBuffer {
 
 
 
+  // Reanchors the chart to the price midpoint
+  // Shifting all historical prices keeps the old samples aligned to the new row-price mapping
   private reanchor(mid: number): void {
     const span = this.bucket * this.rows;
     const margin = span * HeatmapBuffer.MARGIN;
@@ -99,6 +107,22 @@ export class HeatmapBuffer {
   }
 
 
+
+  // Sets cap to the highest p percentile
+  // This prevents one huge size crushing every other color to black
+  // Allocates an array of every non-zero cell and sorts it (O(nlogn))
+  scale(p = 0.98): number {
+    const values: number[] = [];
+    for (const column of this.history) {
+      for (const size of column) if (size > 0) values.push(size);
+    }
+    if (values.length === 0) return 0;
+    values.sort((a, b) => a - b);
+    return values[Math.min(values.length - 1, Math.floor(values.length * p))];
+  }
+
+
+  // Max size in prices (O(n))
   maxSize(): number {
     let max = 0;
     for(const column of this.history){
