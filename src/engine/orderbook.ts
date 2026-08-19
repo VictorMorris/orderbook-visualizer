@@ -84,9 +84,9 @@ export class OrderBook implements BookView {
             }
         }
     }
-    // Sorted levels with total size
-    // Asks are sorted in descending order
-    // Bids are sorted in ascending order
+    // Sorted levels by price
+    // Asks are sorted in ascending order
+    // Bids are sorted in descending order
     levels(side: Side): { price: number; size: number }[] {
         const book = side === "ask" ? this.asks : this.bids;
         const levels: { price: number; size: number }[] = [];
