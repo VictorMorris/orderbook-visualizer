@@ -21,6 +21,7 @@ export const COLOR = {
   dim: 0x39404f, // Dark Gray-Blue
   accent: 0xf0b90b, // Yellow
   flash: 0xffffff, // White
+  border: 0xffffff // White
 } as const;
 
 // Color gradient from cold to hot. Each pair of neighboring colors
