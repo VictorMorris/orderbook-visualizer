@@ -12,14 +12,10 @@ export class HeaderView {
   private spread = new Text({ text: '', style: TEXT.label });
   private lastMid?: number;   // previous mid, for tick-direction colouring
 
-  private w:number;
-  private h:number;
 
   constructor(w: number, h: number) {
     this.container.addChild(this.rule);
 
-    this.w = w;
-    this.h = h;
 
     // Left column: symbol on the first line, venue caption under it.
     this.symbol.x = 0;
