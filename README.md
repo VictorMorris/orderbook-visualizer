@@ -22,7 +22,9 @@ Three pieces:
 3. The renderer. Five Pixi views that read the book through one read-only interface.
 
 The engine doesn't know it's being drawn. The renderer doesn't know where its data came
-from.
+from. The toggle in the header swaps the whole data source underneath the views: `LIVE`
+draws Binance's reconstructed book, `SYNTHETIC` draws the matching engine being driven by
+generated order flow, with no network involved at all.
 
 ## Architecture
 
@@ -41,7 +43,9 @@ src/
     theme, format, motion, panel    shared primitives
     ladder, heatmapChart, tape, depthChart, stats, header    the five views
   driver/
-    synthetic.ts    random order flow for driving the engine without a network
+    synthetic.ts    generated order flow for driving the engine without a network
+    session.ts      one data source, live or synthetic, behind one interface
+    scratch.ts      smoke check for the generated flow
 ```
 
 The seam between the halves is one interface:
@@ -58,9 +62,20 @@ interface BookView {
 `BookView` and never finds out which one it's holding. The same ladder draws a simulated
 book or Binance's real one.
 
-To be clear about what the demo is showing: the deployed page runs `DepthBook` off the
-live feed. The matching engine is driven by its tests and by the synthetic order
-generator.
+`driver/session.ts` bundles a book with its trade tape and a way to shut it down:
+
+```ts
+interface Session {
+  readonly kind: 'live' | 'synthetic';
+  readonly book: BookView;
+  readonly tape: TradeTape;
+  stop(): void;
+}
+```
+
+Switching sources is then just stopping one session and starting the other. `main.ts`
+holds a single mutable `session` and every view reads through it, so nothing in `render/`
+had to change to gain the toggle.
 
 ## The matching engine
 
@@ -96,8 +111,31 @@ actually break order books:
 
 ```bash
 npx tsx src/engine/scratch.ts
-npx tsx src/feed/scratch.ts    # DepthBook diff application
+npx tsx src/feed/scratch.ts      # DepthBook diff application
+npx tsx src/driver/scratch.ts    # synthetic flow: never crosses, prints, stays bounded
 ```
+
+## Synthetic order flow
+
+`driver/synthetic.ts` exists so the engine has something to chew on, and so the page has
+something to show when the feed isn't reachable. Random add/cancel churn was not enough
+to look like a market, so it models four things:
+
+- **A fair value that wanders.** A random walk with a weak pull back toward the starting
+  mid, so price moves without drifting off the scale over a long session.
+- **Passive quotes around it.** Placement offsets are exponential, thick near the touch
+  and thin far out. They're clamped inside the opposite touch so a passive order rests
+  instead of accidentally trading.
+- **Marketable orders.** A small share of events are priced through the touch and let
+  the engine decide how deep they eat. This is what produces trades, and it's real
+  matching: the prints on the tape came out of `submit()`.
+- **Lognormal sizes with a fat tail.** A 2% chance of an order ten times normal size,
+  because the heatmap's percentile scaling and the ladder's bar scaling both exist to
+  handle exactly that and neither gets exercised by uniform sizes.
+
+Cancels sample three resting orders and pull the one furthest from fair value. Quotes go
+stale from the outside in.
+
 
 ## Feed reconstruction
 
@@ -213,7 +251,8 @@ excludes the scratch harnesses), `tsconfig.node.json` for `vite.config.ts`, and
 ## Known gaps
 
 - The feed runs in the visitor's browser, so Binance's regional blocks apply to whoever
-  opens the page rather than to where it's hosted.
+  opens the page rather than to where it's hosted. The synthetic source is there to be
+  switched to manually, it isn't an automatic fallback yet.
 - A dropped socket doesn't reconnect. Snapshot fetches retry, sockets don't.
 - `trades/min` counts inside a 600-deep ring, so in a fast market it's really "at least
   N".
@@ -221,7 +260,7 @@ excludes the scratch harnesses), `tsconfig.node.json` for `vite.config.ts`, and
 
 ## Next
 
-- Synthetic fallback when the feed isn't available
+- Fall back to the synthetic source automatically when the feed can't connect
 - Socket reconnect with backoff
 - Sorted price structure and a cancel index, benchmarked against the current version
 - Engine hot path in C++/WASM behind the same `BookView`, benchmarked against the TS one
