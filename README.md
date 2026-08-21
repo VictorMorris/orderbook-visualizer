@@ -4,7 +4,7 @@ Live limit order book for BTC/USDT, running in the browser. It rebuilds Binance'
 from their diff stream and draws it with Pixi.js: price ladder, liquidity heatmap, trade
 tape, depth curve, book stats.
 
-**[Live demo →](https://victormorris.github.io/orderbook-visualizer/)**
+**[Live demo →](https://victormorris.github.io/orderbook/)**
 
 ![Order book visualizer running against the live BTC/USDT feed](img/demo.gif)
 
@@ -241,7 +241,8 @@ client side.
 ## Deployment
 
 GitHub Pages, built by `.github/workflows/deploy.yml` on push to `main`. Pages serves
-project sites from a subpath, so `vite.config.ts` sets `base: '/orderbook-visualizer/'`.
+project sites from a subpath, so `vite.config.ts` sets `base: '/orderbook/'`. Renaming the
+repo changes that path and breaks the deployed page until this matches.
 On a root domain that line comes out.
 
 TypeScript is split into three projects: `tsconfig.app.json` for the browser (which
