@@ -18,17 +18,23 @@ export class TradeTape {
     this.capacity = capacity;
   }
 
-  // Convert the wire event and push it on the front
+  // Push an already converted trade on the front
   // If this pushes size past capacity it deletes oldest entries
+  // The synthetic driver comes in here, it makes engine Trades not wire events
+  pushTape(trade: TapeTrade): void {
+    this.tape.unshift(trade);
+    while(this.tape.length > this.capacity) this.tape.pop();
+  }
+
+  // Convert the wire event and push it
   push(trade: AggTrade): void {
-      this.tape.unshift({
+    this.pushTape({
       id: trade.a,
       price: Number(trade.p),
       size: Number(trade.q),
       time: trade.T,
       aggressor: trade.m === true ? 'sell' : 'buy' // m means buyer was the maker
     });
-    while(this.tape.length > this.capacity) this.tape.pop();
   }
 
   // returns newest n entries
