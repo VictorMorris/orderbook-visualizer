@@ -98,6 +98,13 @@ export class HeatmapBuffer {
     return this.history;
   }
 
+  // Drops all history
+  // Called when the book is swapped, the stored columns are on a price scale
+  // the new book has nothing to do with
+  clear(): void {
+    this.history = [];
+  }
+
   window(): PriceWindow {
     return {
       top: this.top,
@@ -137,14 +144,16 @@ export class HeatmapBuffer {
 
 // onColumn fires after each sample so the renderer redraws at sampler rate,
 // not at ticker rate.
+// book is resolved per sample instead of captured, so swapping the source
+// doesn't need a new sampler
 export function startHeatmapSampler(
   buffer: HeatmapBuffer,
-  book: BookView,
+  book: () => BookView,
   hz = 4,
   onColumn?: () => void,
 ): () => void {
   const timer = setInterval(() => {
-    buffer.sample(book);
+    buffer.sample(book());
     onColumn?.();
   }, 1000/hz);
 
